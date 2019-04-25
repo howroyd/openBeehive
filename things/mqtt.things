@@ -1,0 +1,3 @@
+Bridge mqtt:broker:mosquitto "Mosquitto" [ host=localhost, port=1883, secure=false, username="openhab", password="fuelcell", clientID="openHAB2server" ]
+{
+}
