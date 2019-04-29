@@ -1,17 +1,25 @@
 #pragma once
 
 #include <Arduino.h>
-#include "uMQTTBroker.h"
+#include <PubSubClient.h>
+
+#define MSG_BUF_SIZE 30
 
 /*
  * Custom broker class with overwritten callback functions
  */
-class myMQTTBroker : public uMQTTBroker
+class MqttHandler : public PubSubClient
 {
 public:
-    virtual bool onConnect(IPAddress addr, uint16_t client_count);
+    MqttHandler(Client &client);
+    MqttHandler(const char *hostname, Client &client);
 
-    virtual bool onAuth(String username, String password);
+    void sendTele(const char *topic, const char *payload);
 
-    virtual void onData(String topic, const char *data, uint32_t length);
+    void setHostname(const char *hostname);
+    void setPeriod(const uint16_t period);
+
+private:
+    char _hostname[20]; // = "MqttHandler";
+    uint16_t _period = 1000;
 };

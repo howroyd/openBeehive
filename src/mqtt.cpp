@@ -1,28 +1,35 @@
 #include <Arduino.h>
-#include "uMQTTBroker.h"
 #include "mqtt.h"
 
 /*
  * Custom broker class with overwritten callback functions
  */
-
-bool myMQTTBroker::onConnect(IPAddress addr, uint16_t client_count)
+MqttHandler::MqttHandler(Client &client) : PubSubClient::PubSubClient(client)
 {
-    //Serial.println(addr.toString() + " connected");
-    return true;
+    setHostname("MqttHandler");
 }
 
-bool myMQTTBroker::onAuth(String username, String password)
+MqttHandler::MqttHandler(const char *hostname, Client &client) : PubSubClient::PubSubClient(client)
 {
-    //Serial.println("Username/Password: " + username + "/" + password);
-    return true;
+    setHostname(hostname);
 }
 
-void myMQTTBroker::onData(String topic, const char *data, uint32_t length)
+void MqttHandler::sendTele(const char *topic, const char *payload)
 {
-    char data_str[length + 1];
-    os_memcpy(data_str, data, length);
-    data_str[length] = '\0';
+    static char *_buf = (char *)calloc(MSG_BUF_SIZE, sizeof(char));
+    strcpy(_buf, "tele/");
+    strcat(_buf, _hostname);
+    strcat(_buf, "/");
+    strcat(_buf, topic);
+    publish(_buf, payload);
+}
 
-    //Serial.println("received topic '" + topic + "' with data '" + (String)data_str + "'");
+void MqttHandler::setHostname(const char *hostname)
+{
+    strcpy(_hostname, hostname);
+}
+
+void MqttHandler::setPeriod(const uint16_t period)
+{
+    _period = period;
 }
