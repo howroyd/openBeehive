@@ -4,6 +4,7 @@
 #include <Sensor_TMP102.h>
 #include <BH1750.h>
 #include "SparkFunCCS811.h"
+#include "Adafruit_CCS811.h"
 
 class Sensor_hub
 {
@@ -17,10 +18,13 @@ public:
 
     bool newData(void);
 
+    String getTicker(void);
+
     String getTmp(void);
     String getLux(void);
     String getCo2(void);
     String getVoc(void);
+    String getCcsTmp(void);
 
     void setTmpAddr(const uint8_t addr);
     void setLuxAddr(const uint8_t addr);
@@ -29,20 +33,24 @@ public:
     void setFreq(const uint32_t freq);
 
 protected:
-    Sensor_TMP102 *tmp;
-    BH1750 *lightMeter;
-    CCS811 *mySensor;
+    Sensor_TMP102 *tmp102;
+    BH1750 *bh1750;
+    Adafruit_CCS811 *ccs811;
+    //CCS811 *ccs811;
     void startSensors(void);
     bool _update(void);
+    void calibrateCcs(void);
 
 private:
     void constructObjects(void);
     void startWire(void);
     void startWire(const uint8_t sda, const uint8_t scl);
-    String _tmpVal;
-    String _luxVal;
-    String _co2Val;
-    String _vocVal;
+    uint32_t _ticker;
+    float _tmpVal = -0.1F;
+    float _luxVal = -0.1F;
+    float _co2Val = -0.1F;
+    float _vocVal = -0.1F;
+    float _ccsTmp = -0.1F;
     bool _newData = false;
     uint32_t _freq = 100000UL;
     uint8_t _addrTmp = 0x48;

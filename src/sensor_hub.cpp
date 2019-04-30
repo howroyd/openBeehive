@@ -8,34 +8,45 @@ Sensor_hub::Sensor_hub()
 
 Sensor_hub::~Sensor_hub()
 {
-    delete tmp;
-    delete lightMeter;
-    delete mySensor;
+    delete tmp102;
+    delete bh1750;
+    delete ccs811;
     Wire.flush();
+}
+
+String Sensor_hub::getTicker(void)
+{
+    return String(_ticker);
 }
 
 String Sensor_hub::getTmp(void)
 {
     _newData = false;
-    return _tmpVal;
+    return String(_tmpVal);
 }
 
 String Sensor_hub::getLux(void)
 {
     _newData = false;
-    return _luxVal;
+    return String(_luxVal);
 }
 
 String Sensor_hub::getCo2(void)
 {
     _newData = false;
-    return _co2Val;
+    return String(_co2Val);
 }
 
 String Sensor_hub::getVoc(void)
 {
     _newData = false;
-    return _vocVal;
+    return String(_vocVal);
+}
+
+String Sensor_hub::getCcsTmp(void)
+{
+    _newData = false;
+    return String(_ccsTmp);
 }
 
 bool Sensor_hub::update(void)
@@ -46,12 +57,13 @@ bool Sensor_hub::update(void)
 
 bool Sensor_hub::update(const uint32_t period)
 {
-    static uint16_t tLast;
+    static uint32_t tLast;
 
     if ((millis() - tLast) > period)
     {
         // Time to update!
         _update();
+        tLast = millis();
     }
     else
     {
@@ -63,19 +75,44 @@ bool Sensor_hub::update(const uint32_t period)
 
 bool Sensor_hub::_update(void)
 {
-    _tmpVal = String(tmp->readTemperature());
-    _luxVal = String(lightMeter->readLightLevel());
+    float newTmp = tmp102->readTemperature();
+    if (newTmp > 0.0)
+        _tmpVal = newTmp;
 
-    if (mySensor->dataAvailable())
+    float newLux = bh1750->readLightLevel(true); // true enables delay to take reading
+    if (newLux > 0.0)
+        _luxVal = newLux;
+
+    //if (ccs811->dataAvailable())
+    if (ccs811->available())
     {
+
+        float newCcsTmp = (float)ccs811->calculateTemperature();
+        if (newCcsTmp > 0.0)
+            _ccsTmp = newCcsTmp;
+
         //If so, have the sensor read and calculate the results.
         //Get them later
-        mySensor->readAlgorithmResults();
+        //ccs811->readAlgorithmResults();
+        if (!ccs811->readData())
+        {
+            float newCo2 = (float)ccs811->geteCO2();
+            //float newCo2 = (float)ccs811->getCO2();
+            if (newCo2 > 0.0)
+                _co2Val = newCo2;
 
-        _co2Val = mySensor->getCO2();
-
-        _vocVal = mySensor->getTVOC();
+            float newVoc = (float)ccs811->getTVOC();
+            if (newVoc > 0.0)
+                _vocVal = newVoc;
+        }
+        else
+        {
+            //_co2Val = -1.0F;
+            //_vocVal = -1.0F;
+        }
     }
+
+    _ticker++;
 
     return _newData = true;
 }
@@ -96,20 +133,32 @@ void Sensor_hub::begin(const uint8_t sda, const uint8_t scl)
 
 void Sensor_hub::startSensors(void)
 {
-    tmp->begin(_addrTmp);
-    lightMeter->begin(BH1750::CONTINUOUS_LOW_RES_MODE);
-    mySensor->begin();
+    tmp102->begin(_addrTmp);
+    bh1750->begin(BH1750::CONTINUOUS_LOW_RES_MODE);
+    ccs811->begin(_addrCcs);
+    calibrateCcs();
+    //ccs811->begin();
+    Wire.flush();
+    update();
+}
+
+void Sensor_hub::calibrateCcs(void)
+{
+    while (!ccs811->available())
+        ;
+    float temp = ccs811->calculateTemperature();
+    ccs811->setTempOffset(temp - 25.0);
 }
 
 void Sensor_hub::startWire(void)
 {
-    Wire.setClock(400000);
+    Wire.setClock(_freq);
     Wire.begin(1, 3);
 }
 
 void Sensor_hub::startWire(const uint8_t sda, const uint8_t scl)
 {
-    Wire.setClock(400000UL);
+    Wire.setClock(_freq);
     Wire.begin(sda, scl);
 }
 
@@ -120,9 +169,10 @@ void Sensor_hub::setFreq(const uint32_t freq)
 
 void Sensor_hub::constructObjects(void)
 {
-    tmp = new Sensor_TMP102();
-    lightMeter = new BH1750(_addrLux);
-    mySensor = new CCS811(_addrCcs);
+    tmp102 = new Sensor_TMP102();
+    bh1750 = new BH1750(_addrLux);
+    ccs811 = new Adafruit_CCS811();
+    //ccs811 = new CCS811(_addrCcs);
 }
 
 void Sensor_hub::setTmpAddr(const uint8_t addr)

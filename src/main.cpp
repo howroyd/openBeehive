@@ -1,12 +1,15 @@
 #include <Arduino.h>
-#include "myEsp8266Wifi.h"
+
 #include "myWifi.h"
 #include "myMqtt.h"
-#include "mqtt.h"
+
+#include "myEsp8266Wifi.h"
 #include "sensor_hub.h"
+#include "mqtt.h"
 
 WiFiClient espClient;
 MqttHandler client(espClient);
+
 Sensor_hub sensors;
 
 void callback(char *topic, byte *payload, unsigned int length);
@@ -21,13 +24,10 @@ char luxTopic[] = "LUX";
 
 char co2Topic[] = "CO2";
 char vocTopic[] = "VOC";
+char ccsTmpTopic[] = "TMP2";
 
 void setup()
 {
-  Wire.setClock(400000);
-  Wire.begin(1, 3); // Using Rx & Tx pins
-  //Wire.begin(0, 2); // Using GPIO 0 (SDA) & GPIO 2 (SCL)
-
   // Start WiFi
   startWiFiClient(wifiHome2G4.ssid, wifiHome2G4.pass);
   setArduinoOTA(wifiHome2G4.host);
@@ -42,6 +42,7 @@ void setup()
       delay(2000);
   }
 
+  //sensors.setFreq(400000UL);
   sensors.begin();
   sensors.update();
 }
@@ -49,7 +50,7 @@ void setup()
 void loop()
 {
   ArduinoOTA.poll();
-  sensors.update();
+  sensors.update(500UL);
   publish(2000UL);
 }
 
@@ -68,6 +69,7 @@ void publish(const unsigned long period_ms)
     client.sendTele(luxTopic, sensors.getLux().c_str());
     client.sendTele(co2Topic, sensors.getCo2().c_str());
     client.sendTele(vocTopic, sensors.getVoc().c_str());
+    client.sendTele(ccsTmpTopic, sensors.getCcsTmp().c_str());
     tLast = millis();
   }
 }
